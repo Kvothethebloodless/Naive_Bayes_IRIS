@@ -1,8 +1,8 @@
 import numpy as np
-import matplotlib.pyplot as plt
-#from scipy.stats import multivariate_normal
+import matplotlib.pyplot as plt #from scipy.stats
+#import multivariate_normal
 import parse_iris as pi
-
+import math as math
 #3 important functions.
 
 # p(c_i/X) = (p(X/c_i)*p(c_i))/p(X)
@@ -15,16 +15,18 @@ import parse_iris as pi
 
 
 def norm_pdf_multivariate(x, param):
-    size = len(x)
+    
+    [size] = np.shape(x)
+    pi = 3.14;
     [mu,sigma] = param;
     if size == len(mu) and (size, size) == sigma.shape:
-        det = linalg.det(sigma)
+        det = np.linalg.det(sigma)
         if det == 0:
             raise NameError("The covariance matrix can't be singular")
 
         norm_const = 1.0/ ( math.pow((2*pi),float(size)/2) * math.pow(det,1.0/2) )
-        x_mu = matrix(x - mu)
-        inv = sigma.I        
+        x_mu = np.matrix(x - mu);
+        inv = np.linalg.inv(sigma);       
         result = math.pow(math.e, -0.5 * (x_mu * inv * x_mu.T))
         return norm_const * result
     else:
@@ -35,10 +37,10 @@ def inference_prior(traindata):
     C_is = np.array([0,1,2])
     freq_Cis = np.array([np.sum(traindata[:,4]==C_i)  for C_i in C_is])
     prior_Cis =  freq_Cis/(np.sum(freq_Cis))
-    return np.array([C_is,prior_Cis])
+    return np.array(prior_Cis)
     
 
-def decision_posterior(Ci_params,datapoints,n_classes,n_datapoints):
+def decision_posterior(priors,Ci_params,datapoints,n_classes,n_datapoints):
     #Ci_params is a tuple with (class_labels,mu_array,var_matrix) as elements
     # Given n dimension data with I classes - size of Ci_params is 3 by 
     #given data point, calculate the posterior probabilities
@@ -51,7 +53,7 @@ def decision_posterior(Ci_params,datapoints,n_classes,n_datapoints):
     for j in range(n_datapoints):
         datapoint =datapoints[j];
         for i in range(n_classes):
-            posterior_prob[i,1] = norm_pdf_multivariate(datapoint,(mu_array[i],var_matrix[i]));
+            posterior_prob[i,1] = norm_pdf_multivariate(datapoint,(mu_array[i],var_matrix[i])) * priors[i] ;
         max_post_prob_loc = np.argmax(posterior_prob[:,1]);                                  
         max_post_class = posterior_prob[:,0][max_post_prob_loc]
         decided_class[j] = max_post_class;
@@ -75,28 +77,27 @@ def inference_likelihood(traindata,class_labels,n_classes,n_features): #Naive Ba
     all_class_params = (class_labels,all_class_mu,all_class_var) ;
     return all_class_params
 
-        
-        
-
-
+def calc_error(assigned_labels,orig_labels):
+    correct = np.sum(assigned_labels == orig_labels);
+    total = np.size(assigned_labels);
+    accuracy = correct / total;
+    return accuracy*100;
     
-    
- 
 
 
-
-
-
-
-
-
-
-
-if __name__=='main':
+if __name__ == "__main__":
     [traindata,testdata] = pi.get_data();
-    iris_class_data = np.zeros(no_classes,40) #40 samples per class
+    n_classes = 3;
+    n_features = 4;
+    n_datapoints = 30;
+    testdata_labels = testdata[:,4];
+    testdata = testdata;
+    all_class_labels = np.arange(3);
+
+    priors = inference_prior(traindata);
     
+    class_params = inference_likelihood(traindata,all_class_labels,n_classes,n_features);
+    assigned_labels = decision_posterior(priors,class_params,testdata[:,0:4],n_classes,n_datapoints);
 
 
-
-
+    print(calc_error(assigned_labels,testdata_labels))
